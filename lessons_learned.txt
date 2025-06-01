@@ -1,0 +1,28 @@
+# Chrome扩展被拒与合规整改经验总结
+
+## 1. 被拒原因
+- 扩展在提交Chrome Web Store审核时被拒，原因是"权限过度使用"（Excessive permissions）。
+- 主要问题：manifest.json中声明了activeTab和scripting权限，但实际代码未使用，且功能实现只需host_permissions。
+
+## 2. 分析过程
+- 仔细阅读Chrome Web Store的权限政策和拒绝邮件，明确"最小权限原则"要求。
+- 检查所有代码，确认未用到activeTab、scripting等权限。
+- 验证contentScript.js只依赖于host_permissions注入，无需其他权限。
+- 检查background.js为空，确认不需要Service Worker。
+
+## 3. 整改措施
+- 从manifest.json中移除activeTab和scripting权限，只保留host_permissions（仅限doubao.com和jimeng.jianying.com）。
+- 删除无用的background.js和相关配置。
+- 更新README.md和隐私政策，明确说明只请求最小主机权限，所有处理均在本地完成。
+- 在Chrome Web Store表单中详细说明主机权限用途和单一用途，确保描述简洁、合规。
+
+## 4. 合规经验总结
+- Chrome扩展必须严格遵循"最小权限原则"，只声明真正必需的权限。
+- 不要为未来可能的功能预留权限，未用到的权限一律移除。
+- 权限说明要具体、易懂，突出"仅限某些网站""本地处理""不收集数据"等关键词。
+- 隐私政策和用户说明要同步更新，保持透明。
+- 提交前可用json.tool等工具校验manifest.json格式。
+- 被拒后要耐心分析邮件和官方文档，逐条排查并整改。
+
+---
+

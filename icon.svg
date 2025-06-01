@@ -1,0 +1,46 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="64" cy="64" r="60" fill="url(#gradient1)" stroke="url(#gradient2)" stroke-width="2"/>
+  
+  <!-- 图片框架 -->
+  <rect x="28" y="24" width="72" height="56" rx="8" fill="none" stroke="white" stroke-width="3" opacity="0.9"/>
+  
+  <!-- 图片内容示意（山峦） -->
+  <path d="M36 64 L48 52 L60 60 L72 48 L84 56 L92 64 V72 H36 V64 Z" fill="white" opacity="0.6"/>
+  
+  <!-- 太阳 -->
+  <circle cx="80" cy="36" r="6" fill="white" opacity="0.7"/>
+  
+  <!-- 下载箭头 -->
+  <g transform="translate(64, 88)">
+    <!-- 箭头主体 -->
+    <rect x="-2" y="-16" width="4" height="20" fill="white" rx="2"/>
+    <!-- 箭头头部 -->
+    <path d="M-8 -4 L0 4 L8 -4" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  
+  <!-- 清洁效果（表示去水印） -->
+  <g opacity="0.4">
+    <circle cx="45" cy="45" r="3" fill="white">
+      <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="85" cy="55" r="2" fill="white">
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="55" cy="35" r="2" fill="white">
+      <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- 渐变定义 -->
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:0.8" />
+    </linearGradient>
+  </defs>
+</svg> 
