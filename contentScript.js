@@ -338,7 +338,7 @@ async function downloadImageWithWatermarkRemoval(imgUrl, siteType) {
  */
 function removeWatermark(ctx, width, height) {
   console.log('🔍 开始固定区域水印去除...');
-  showDebugMessage(`🔍 开始固定区域水印去除 (${width}x${height})`, true);
+  // showDebugMessage(`🔍 开始固定区域水印去除 (${width}x${height})`, true); // 开发调试用，部署前注释掉
 
   try {
     // 固定处理左上角区域 - 扩大区域确保完全覆盖"AI生成"水印
@@ -352,14 +352,14 @@ function removeWatermark(ctx, width, height) {
 
     const processingText = `🧹 固定处理左上角水印区域 (${watermarkRegion.x}, ${watermarkRegion.y}, ${watermarkRegion.w}x${watermarkRegion.h})`;
     console.log(processingText);
-    showDebugMessage(processingText);
+    // showDebugMessage(processingText); // 开发调试用，部署前注释掉
 
     // 使用增强型算法处理左上角
     removeWatermarkFromRegionEnhanced(ctx, watermarkRegion);
 
     const completeText = `✅ 水印去除完成！处理了左上角固定区域`;
     console.log(completeText);
-    showDebugMessage(completeText);
+    // showDebugMessage(completeText); // 开发调试用，部署前注释掉
 
   } catch (e) {
     console.error('❌ 固定区域水印去除失败:', e);
@@ -367,7 +367,7 @@ function removeWatermark(ctx, width, height) {
     const fallbackRegion = { name: '左上角(降级)', x: 10, y: 10, w: 150, h: 50 };
     const fallbackText = `🔄 使用降级方案处理左上角`;
     console.log(fallbackText);
-    showDebugMessage(fallbackText);
+    // showDebugMessage(fallbackText); // 开发调试用，部署前注释掉
     removeWatermarkFromRegion(ctx, fallbackRegion);
   }
 }
@@ -725,11 +725,11 @@ function removeWatermarkFromRegion(ctx, region) {
 function removeWatermarkFromRegionEnhanced(ctx, region) {
   try {
     console.log(`🔥 使用增强型算法处理左上角"AI生成"文字`);
-    showDebugMessage(`🔥 使用增强型算法处理左上角"AI生成"文字`);
+    // showDebugMessage(`🔥 使用增强型算法处理左上角"AI生成"文字`); // 开发调试用，部署前注释掉
 
-    // 第一步：使用更强的参数，确保完全去除文字
-    const ITERATIONS = 5; // 5次迭代，确保彻底去除
-    const KERNEL_SIZE = 15; // 15x15核心，更好地处理文字边缘
+    // 第一步：使用优化的参数，平衡去除效果和自然度
+    const ITERATIONS = 4; // 4次迭代，配合改进的算法
+    const KERNEL_SIZE = 13; // 13x13核心，配合边缘柔化
     
     for (let iteration = 0; iteration < ITERATIONS; iteration++) {
       console.log(`🔄 增强处理第${iteration + 1}次迭代`);
@@ -763,18 +763,40 @@ function removeWatermarkFromRegionEnhanced(ctx, region) {
           
           if (r_neighbors.length === 0) continue;
           
-          // 使用平衡的滤波策略，避免过度处理
+          // 使用改进的自然滤波策略
           r_neighbors.sort((a, b) => a - b);
           g_neighbors.sort((a, b) => a - b);
           b_neighbors.sort((a, b) => a - b);
 
-          // 使用中值滤波，更自然的效果
+          // 混合中值和加权平均，让效果更自然
           const medianIndex = Math.floor(r_neighbors.length / 2);
           const currentIndex = getIndex(x, y);
 
-          newPixelsData[currentIndex] = r_neighbors[medianIndex];
-          newPixelsData[currentIndex + 1] = g_neighbors[medianIndex];
-          newPixelsData[currentIndex + 2] = b_neighbors[medianIndex];
+          // 获取当前像素值
+          const currentR = pixels[currentIndex];
+          const currentG = pixels[currentIndex + 1];
+          const currentB = pixels[currentIndex + 2];
+
+          // 计算中值
+          const medianR = r_neighbors[medianIndex];
+          const medianG = g_neighbors[medianIndex];
+          const medianB = b_neighbors[medianIndex];
+
+          // 计算加权平均（给边缘像素更高权重）
+          const avgR = r_neighbors.reduce((sum, val) => sum + val, 0) / r_neighbors.length;
+          const avgG = g_neighbors.reduce((sum, val) => sum + val, 0) / g_neighbors.length;
+          const avgB = b_neighbors.reduce((sum, val) => sum + val, 0) / b_neighbors.length;
+
+          // 根据位置调整混合比例（边缘区域更保守）
+          const edgeDistance = Math.min(x, y, region.w - x - 1, region.h - y - 1);
+          const edgeFactor = Math.min(1, edgeDistance / 5); // 边缘5像素内更保守
+
+          // 混合中值和平均值，边缘区域更多使用平均值
+          const blendFactor = 0.6 + (1 - edgeFactor) * 0.3; // 边缘区域0.9，中心区域0.6
+
+          newPixelsData[currentIndex] = Math.round(medianR * blendFactor + avgR * (1 - blendFactor));
+          newPixelsData[currentIndex + 1] = Math.round(medianG * blendFactor + avgG * (1 - blendFactor));
+          newPixelsData[currentIndex + 2] = Math.round(medianB * blendFactor + avgB * (1 - blendFactor));
           newPixelsData[currentIndex + 3] = pixels[currentIndex + 3];
         }
       }
@@ -783,11 +805,89 @@ function removeWatermarkFromRegionEnhanced(ctx, region) {
       ctx.putImageData(imageData, region.x, region.y);
     }
     
-    // 第二步：完成处理，不进行任何额外修复
-    console.log(`✅ 中值滤波处理完成，跳过所有额外修复`);
-    showDebugMessage(`✅ 中值滤波处理完成，跳过所有额外修复`);
+    // 第二步：自然边界处理，打破矩形感
+    console.log(`🎨 进行自然边界处理...`);
+    // showDebugMessage(`🎨 进行自然边界处理...`); // 开发调试用，部署前注释掉
 
-    console.log(`✅ 增强型处理完成 (${ITERATIONS}次迭代，纯中值滤波)`);
+    const imageData = ctx.getImageData(region.x, region.y, region.w, region.h);
+    const pixels = imageData.data;
+    const newPixelsData = new Uint8ClampedArray(pixels);
+
+    // 创建不规则的处理强度图
+    for (let y = 0; y < region.h; y++) {
+      for (let x = 0; x < region.w; x++) {
+        const idx = (y * region.w + x) * 4;
+
+        // 计算到各边的距离
+        const distToLeft = x;
+        const distToTop = y;
+        const distToRight = region.w - x - 1;
+        const distToBottom = region.h - y - 1;
+        const minDist = Math.min(distToLeft, distToTop, distToRight, distToBottom);
+
+        // 添加噪声让边界不规则
+        const noiseX = Math.sin(x * 0.3 + y * 0.2) * 3;
+        const noiseY = Math.cos(x * 0.2 + y * 0.3) * 3;
+        const adjustedDist = minDist + noiseX + noiseY;
+
+        // 计算处理强度（中心强，边缘弱，带噪声）
+        const maxFadeDistance = 15; // 渐变距离
+        let intensity = 1.0;
+
+        if (adjustedDist < maxFadeDistance) {
+          // 使用平滑的渐变函数
+          const normalizedDist = Math.max(0, adjustedDist) / maxFadeDistance;
+          intensity = normalizedDist * normalizedDist * (3 - 2 * normalizedDist); // 平滑步函数
+
+          // 添加随机变化让过渡更自然
+          const randomFactor = 0.8 + Math.random() * 0.4; // 0.8-1.2
+          intensity *= randomFactor;
+          intensity = Math.max(0, Math.min(1, intensity));
+        }
+
+        // 只对需要处理的像素进行混合
+        if (intensity < 0.95) {
+          // 获取周围像素的加权平均
+          let avgR = 0, avgG = 0, avgB = 0, totalWeight = 0;
+          const sampleRadius = 4;
+
+          for (let dy = -sampleRadius; dy <= sampleRadius; dy++) {
+            for (let dx = -sampleRadius; dx <= sampleRadius; dx++) {
+              const nx = x + dx, ny = y + dy;
+              if (nx >= 0 && nx < region.w && ny >= 0 && ny < region.h) {
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const weight = Math.exp(-distance / 2); // 高斯权重
+
+                const nIdx = (ny * region.w + nx) * 4;
+                avgR += pixels[nIdx] * weight;
+                avgG += pixels[nIdx + 1] * weight;
+                avgB += pixels[nIdx + 2] * weight;
+                totalWeight += weight;
+              }
+            }
+          }
+
+          if (totalWeight > 0) {
+            avgR /= totalWeight;
+            avgG /= totalWeight;
+            avgB /= totalWeight;
+
+            // 根据强度混合原始像素和平均值
+            newPixelsData[idx] = Math.round(pixels[idx] * intensity + avgR * (1 - intensity));
+            newPixelsData[idx + 1] = Math.round(pixels[idx + 1] * intensity + avgG * (1 - intensity));
+            newPixelsData[idx + 2] = Math.round(pixels[idx + 2] * intensity + avgB * (1 - intensity));
+          }
+        }
+      }
+    }
+
+    imageData.data.set(newPixelsData);
+    ctx.putImageData(imageData, region.x, region.y);
+
+    console.log(`✅ 自然边界处理完成`);
+    // showDebugMessage(`✅ 自然边界处理完成`); // 开发调试用，部署前注释掉
+
+    console.log(`✅ 增强型处理完成 (${ITERATIONS}次迭代 + 自然边界)`);
 
   } catch (e) {
     console.error(`❌ 增强型水印去除失败:`, e);
