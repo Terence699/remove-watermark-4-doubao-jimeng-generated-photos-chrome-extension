@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水印检测测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-image {
+            width: 400px;
+            height: 400px;
+            border: 2px solid #ddd;
+            margin: 20px 0;
+            position: relative;
+            background: linear-gradient(45deg, #e8f4f8, #d1ecf1);
+        }
+        .watermark {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(128, 128, 128, 0.7);
+            color: white;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        .test-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            opacity: 0.9;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>水印检测算法测试</h1>
+        <p>这个页面用于测试修改后的水印检测算法是否能够减少误检。</p>
+        
+        <div class="test-image" id="testImage">
+            <div class="watermark">AI生成</div>
+            <canvas id="testCanvas" width="400" height="400" style="display: none;"></canvas>
+        </div>
+        
+        <button class="test-button" onclick="runWatermarkTest()">运行水印检测测试</button>
+        <button class="test-button" onclick="clearLog()">清空日志</button>
+        
+        <div class="log" id="logOutput">
+            点击"运行水印检测测试"开始测试...
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logOutput = document.getElementById('logOutput');
+            const time = new Date().toLocaleTimeString();
+            logOutput.innerHTML += `[${time}] ${message}<br>`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('logOutput').innerHTML = '';
+        }
+
+        function createTestImage() {
+            const canvas = document.getElementById('testCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // 创建一个更真实的测试图像（模拟豆包生成的图片）
+            const gradient = ctx.createLinearGradient(0, 0, 400, 400);
+            gradient.addColorStop(0, '#f0f8ff');
+            gradient.addColorStop(0.5, '#e6f3ff');
+            gradient.addColorStop(1, '#ddeeff');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 400, 400);
+
+            // 添加更复杂的图像内容（模拟真实图片）
+            // 模拟天空
+            ctx.fillStyle = '#87ceeb';
+            ctx.fillRect(0, 0, 400, 150);
+
+            // 模拟云朵
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(100, 80, 30, 0, Math.PI * 2);
+            ctx.arc(150, 70, 25, 0, Math.PI * 2);
+            ctx.arc(200, 85, 35, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 模拟地面
+            ctx.fillStyle = '#90ee90';
+            ctx.fillRect(0, 150, 400, 250);
+
+            // 模拟建筑物
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(80, 100, 60, 100);
+            ctx.fillStyle = '#ff6347';
+            ctx.fillRect(80, 80, 60, 20);
+
+            // 在左上角添加更真实的"AI生成"水印
+            ctx.fillStyle = 'rgba(120, 120, 120, 0.6)';
+            ctx.fillRect(8, 8, 55, 18);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = '11px Arial';
+            ctx.fillText('AI生成', 12, 20);
+
+            return ctx;
+        }
+
+        // 这里我们需要复制修改后的检测函数进行测试
+        function detectWatermarkInRegion(ctx, region, imgWidth, imgHeight) {
+            try {
+                const safeRegion = {
+                    x: Math.max(0, Math.min(region.x, imgWidth - 1)),
+                    y: Math.max(0, Math.min(region.y, imgHeight - 1)),
+                    w: Math.min(region.w, imgWidth - region.x),
+                    h: Math.min(region.h, imgHeight - region.y)
+                };
+
+                if (safeRegion.w <= 0 || safeRegion.h <= 0) return 0;
+
+                const imageData = ctx.getImageData(safeRegion.x, safeRegion.y, safeRegion.w, safeRegion.h);
+                const pixels = imageData.data;
+                
+                let textLikePixels = 0;
+                let totalPixels = 0;
+                let edgePixels = 0;
+                let contrastSum = 0;
+                let uniformColorPixels = 0;
+                let backgroundPixels = 0;
+                
+                // 分析整体颜色分布
+                const colorHistogram = new Map();
+                for (let y = 0; y < safeRegion.h; y++) {
+                    for (let x = 0; x < safeRegion.w; x++) {
+                        const idx = (y * safeRegion.w + x) * 4;
+                        const r = pixels[idx];
+                        const g = pixels[idx + 1];
+                        const b = pixels[idx + 2];
+                        const alpha = pixels[idx + 3];
+                        
+                        if (alpha < 50) continue;
+                        
+                        const quantizedR = Math.floor(r / 32) * 32;
+                        const quantizedG = Math.floor(g / 32) * 32;
+                        const quantizedB = Math.floor(b / 32) * 32;
+                        const colorKey = `${quantizedR},${quantizedG},${quantizedB}`;
+                        
+                        colorHistogram.set(colorKey, (colorHistogram.get(colorKey) || 0) + 1);
+                    }
+                }
+                
+                let dominantColor = null;
+                let maxCount = 0;
+                for (const [color, count] of colorHistogram.entries()) {
+                    if (count > maxCount) {
+                        maxCount = count;
+                        dominantColor = color.split(',').map(Number);
+                    }
+                }
+                
+                // 分析像素特征
+                for (let y = 1; y < safeRegion.h - 1; y++) {
+                    for (let x = 1; x < safeRegion.w - 1; x++) {
+                        const idx = (y * safeRegion.w + x) * 4;
+                        const r = pixels[idx];
+                        const g = pixels[idx + 1];
+                        const b = pixels[idx + 2];
+                        const alpha = pixels[idx + 3];
+                        
+                        if (alpha < 50) continue;
+                        totalPixels++;
+                        
+                        const brightness = (r + g + b) / 3;
+                        
+                        // 检查是否为背景色
+                        if (dominantColor) {
+                            const colorDistance = Math.sqrt(
+                                Math.pow(r - dominantColor[0], 2) + 
+                                Math.pow(g - dominantColor[1], 2) + 
+                                Math.pow(b - dominantColor[2], 2)
+                            );
+                            if (colorDistance < 40) {
+                                backgroundPixels++;
+                                continue;
+                            }
+                        }
+                        
+                        // 检测边缘
+                        const neighbors = [
+                            pixels[((y-1) * safeRegion.w + x) * 4],
+                            pixels[((y+1) * safeRegion.w + x) * 4],
+                            pixels[(y * safeRegion.w + (x-1)) * 4],
+                            pixels[(y * safeRegion.w + (x+1)) * 4]
+                        ];
+                        
+                        const avgNeighborBrightness = neighbors.reduce((sum, val) => sum + val, 0) / neighbors.length;
+                        const contrast = Math.abs(brightness - avgNeighborBrightness);
+                        contrastSum += contrast;
+                        
+                        if (contrast > 50) {
+                            edgePixels++;
+                        }
+                        
+                        const colorVariance = Math.abs(r - g) + Math.abs(g - b) + Math.abs(b - r);
+
+                        const isLowSaturation = colorVariance < 40;
+                        const isDarkText = brightness < 140;
+                        const isLightText = brightness > 200;
+                        const isHighContrast = contrast > 35;
+                        const isMediumContrast = contrast > 20;
+
+                        if (isLowSaturation) {
+                            uniformColorPixels++;
+                        }
+
+                        if ((isLowSaturation && (isDarkText || isLightText)) ||
+                            (isHighContrast && isLowSaturation) ||
+                            (isMediumContrast && isLowSaturation && (isDarkText || isLightText))) {
+                            textLikePixels++;
+                        }
+                    }
+                }
+                
+                if (totalPixels === 0) return 0;
+                
+                const textRatio = textLikePixels / totalPixels;
+                const edgeRatio = edgePixels / totalPixels;
+                const avgContrast = contrastSum / totalPixels;
+                const uniformRatio = uniformColorPixels / totalPixels;
+                const backgroundRatio = backgroundPixels / totalPixels;
+                
+                if (backgroundRatio > 0.8) {
+                    return 0;
+                }
+                
+                let score = 0;
+                score += textRatio * 0.5;
+                score += Math.min(edgeRatio * 2.5, 0.35);
+                score += Math.min(avgContrast / 80, 0.25);
+                score += Math.min(uniformRatio * 0.4, 0.15);
+
+                if (textRatio > 0.1 && edgeRatio > 0.05 && avgContrast > 15 && uniformRatio > 0.2) {
+                    score += 0.2;
+                }
+                
+                if (region.name === '左上角') {
+                    const hasTypicalWatermarkFeatures = 
+                        textRatio > 0.1 && 
+                        textRatio < 0.4 &&
+                        edgeRatio > 0.05 && 
+                        avgContrast > 15 &&
+                        backgroundRatio < 0.7;
+                    
+                    if (!hasTypicalWatermarkFeatures) {
+                        score *= 0.5;
+                    }
+                }
+                
+                return Math.min(score, 1);
+                
+            } catch (e) {
+                log('水印区域检测失败: ' + e.message);
+                return 0;
+            }
+        }
+
+        function runWatermarkTest() {
+            log('开始水印检测测试...');
+            
+            const ctx = createTestImage();
+            const width = 400;
+            const height = 400;
+            
+            // 定义四个角落的检测区域
+            const cornerRegions = [
+                { name: '左上角', x: 2, y: 2, w: 180, h: 80 },
+                { name: '右上角', x: width - 182, y: 2, w: 180, h: 80 },
+                { name: '左下角', x: 2, y: height - 82, w: 180, h: 80 },
+                { name: '右下角', x: width - 182, y: height - 82, w: 180, h: 80 }
+            ];
+
+            const detectedWatermarks = [];
+
+            // 检测每个角落
+            for (const region of cornerRegions) {
+                const watermarkScore = detectWatermarkInRegion(ctx, region, width, height);
+                log(`🔍 ${region.name}(${region.x},${region.y},${region.w}x${region.h}) 评分: ${watermarkScore.toFixed(2)}`);
+                
+                let threshold = 0.5;
+                if (region.name === '左上角') {
+                    threshold = 0.2;
+                } else if (region.name === '右上角') {
+                    threshold = 0.4;
+                } else {
+                    threshold = 0.6;
+                }
+                
+                if (watermarkScore > threshold) {
+                    log(`✅ 在${region.name}检测到水印！(评分${watermarkScore.toFixed(2)} > 阈值${threshold})`);
+                    detectedWatermarks.push({...region, score: watermarkScore});
+                } else {
+                    log(`❌ ${region.name}未检测到水印 (评分${watermarkScore.toFixed(2)} <= 阈值${threshold})`);
+                }
+            }
+
+            log(`\n测试完成！共检测到 ${detectedWatermarks.length} 个水印区域`);
+            
+            if (detectedWatermarks.length === 1 && detectedWatermarks[0].name === '左上角') {
+                log('✅ 测试通过！只检测到左上角的真实水印，没有误检');
+            } else if (detectedWatermarks.length === 0) {
+                log('⚠️ 没有检测到任何水印，可能阈值设置过高');
+            } else {
+                log('❌ 检测到多个水印区域，可能存在误检');
+            }
+        }
+    </script>
+</body>
+</html>
