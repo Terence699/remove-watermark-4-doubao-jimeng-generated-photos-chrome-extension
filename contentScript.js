@@ -12,6 +12,7 @@ function getCurrentSiteType() {
   const hostname = window.location.hostname;
   if (hostname.includes('doubao.com')) return 'doubao';
   if (hostname.includes('jimeng.jianying.com')) return 'jimeng';
+  if (hostname.includes('dreamina.capcut.com')) return 'dreamina';
   return 'unknown';
 }
 
@@ -25,6 +26,9 @@ function getImageSelector(siteType) {
     case 'jimeng':
       // This targets the main image in the detailed view.
       return 'img.image-ArSTaO, img[data-apm-action="record-detail-image-detail-image-container"]';
+    case 'dreamina':
+      // Dreamina (international version) uses similar selectors as jimeng
+      return 'img.image-GsX5hD, img[data-apm-action="record-detail-image-detail-image-container"]';
     default:
       return 'img';
   }
@@ -35,6 +39,7 @@ function getSiteName(siteType) {
   switch (siteType) {
     case 'doubao': return '豆包';
     case 'jimeng': return '即梦';
+    case 'dreamina': return 'Dreamina';
     default: return '未知';
   }
 }
@@ -63,6 +68,18 @@ function isLargeImageMode(img, siteType) {
     
     if (rect.width > 400 && rect.height > 400) {
       console.log('✅ [即梦] 判断为大图模式');
+      return true;
+    }
+    return false;
+  }
+
+  if (siteType === 'dreamina') {
+    // Dreamina uses similar modal detection logic as jimeng
+    const modalContainer = img.closest('[style*="position: fixed"], [class*="modal"], [class*="dialog"], [class*="overlay"]');
+    if (!modalContainer) return false;
+    
+    if (rect.width > 400 && rect.height > 400) {
+      console.log('✅ [Dreamina] 判断为大图模式');
       return true;
     }
     return false;
@@ -177,6 +194,8 @@ function addDownloadButton() {
     let buttonGradient = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'; // 默认紫色
     if (siteType === 'jimeng') {
       buttonGradient = 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'; // 即梦用蓝色
+    } else if (siteType === 'dreamina') {
+      buttonGradient = 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)'; // Dreamina用橙红色
     }
     
     // 计算按钮位置
@@ -307,7 +326,11 @@ async function downloadImageWithWatermarkRemoval(imgUrl, siteType) {
         }
         
         console.log('Canvas处理成功，Blob大小:', blob.size, 'bytes');
-        downloadBlob(blob, `doubao图片_去水印_${Date.now()}.png`);
+        const siteName = getSiteName(siteType);
+        const filePrefix = siteType === 'doubao' ? 'doubao图片' : 
+                          siteType === 'jimeng' ? '即梦图片' :
+                          siteType === 'dreamina' ? 'Dreamina图片' : '图片';
+        downloadBlob(blob, `${filePrefix}_去水印_${Date.now()}.png`);
         resolve();
       }, 'image/png', 0.95);
     });
@@ -321,7 +344,10 @@ async function downloadImageWithWatermarkRemoval(imgUrl, siteType) {
       const response = await fetch(imgUrl);
       const blob = await response.blob();
       const extension = blob.type.split('/')[1] || 'png';
-      await downloadBlob(blob, `doubao图片_原图_${Date.now()}.${extension}`);
+      const filePrefix = siteType === 'doubao' ? 'doubao图片' : 
+                        siteType === 'jimeng' ? '即梦图片' :
+                        siteType === 'dreamina' ? 'Dreamina图片' : '图片';
+      await downloadBlob(blob, `${filePrefix}_原图_${Date.now()}.${extension}`);
       console.log('降级下载成功');
     } catch (fallbackError) {
       console.error('所有下载方案都失败:', fallbackError);

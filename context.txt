@@ -1,4 +1,0 @@
-doubao url example: https://www.doubao.com/chat/8573086127639298
-element of large image on doubao:
-<img data-testid="in_painting_picture" class="preview-img-UILCM3 img-bg-fS7NL0" src="https://p3-flow-imagex-sign.byteimg.com/ocean-cloud-tos/image_skill/06eaac6a-2f81-470f-b3bd-3e4d915ec302_1750223776068931717~tplv-a9rns2rl98-web-preview-watermark.png?rk3s=b14c611d&amp;x-expires=1781759776&amp;x-signature=y35oo8XgZHPFJxkeQ9DXtD%2FiQoM%3D" style="">
-
