@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "豆包即梦图片去水印下载器",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "在豆包、即梦和Dreamina网页上智能下载去除水印的图片，支持webp转换，极简高效。",
   "icons": {
     "16": "icon16.png",

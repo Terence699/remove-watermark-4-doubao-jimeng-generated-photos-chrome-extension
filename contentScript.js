@@ -1,4 +1,5 @@
-// 调试：确认脚本是否加载
+// 豆包即梦图片去水印下载器 v1.2.2
+// 修复即梦网站适配问题，增强选择器兼容性
 console.log('通用去水印插件已加载！当前网站:', window.location.hostname);
 
 // 防止重复处理的全局集合 - This is being removed as it causes issues with dynamic content.
@@ -24,8 +25,9 @@ function getImageSelector(siteType) {
       // The isLargeImageMode function will distinguish the main image from thumbnails.
       return 'img[data-testid="in_painting_picture"]';
     case 'jimeng':
-      // This targets the main image in the detailed view.
-      return 'img.image-ArSTaO, img[data-apm-action="record-detail-image-detail-image-container"]';
+      // Updated selectors for the current jimeng website structure
+      // Support both old and new class names and data attributes
+      return 'img[class*="image-"], img[data-apm-action*="image"], img[data-apm-action*="detail"]';
     case 'dreamina':
       // Dreamina (international version) uses similar selectors as jimeng
       return 'img.image-GsX5hD, img[data-apm-action="record-detail-image-detail-image-container"]';
@@ -62,14 +64,27 @@ function isLargeImageMode(img, siteType) {
   }
 
   if (siteType === 'jimeng') {
-    // Logic for Jimeng remains the same.
+    // Enhanced logic for Jimeng with better debugging
+    console.log(`🔍 [即梦] 检测大图模式 - 图片尺寸: ${rect.width}x${rect.height}`);
+    console.log(`🔍 [即梦] 图片类名: ${img.className}`);
+    console.log(`🔍 [即梦] 图片data-apm-action: ${img.getAttribute('data-apm-action')}`);
+
     const modalContainer = img.closest('[style*="position: fixed"], [class*="modal"], [class*="dialog"], [class*="overlay"]');
-    if (!modalContainer) return false;
-    
-    if (rect.width > 400 && rect.height > 400) {
+    console.log(`🔍 [即梦] 找到模态容器: ${modalContainer ? '是' : '否'}`);
+
+    // 降低尺寸要求，因为有些大图可能不到400px
+    if (rect.width > 300 && rect.height > 300) {
       console.log('✅ [即梦] 判断为大图模式');
       return true;
     }
+
+    // 如果没有模态容器但图片足够大，也认为是大图模式
+    if (rect.width > 500 && rect.height > 500) {
+      console.log('✅ [即梦] 基于尺寸判断为大图模式');
+      return true;
+    }
+
+    console.log('❌ [即梦] 不是大图模式');
     return false;
   }
 
@@ -143,6 +158,12 @@ function addDownloadButton() {
   const selector = getImageSelector(siteType);
   const images = document.querySelectorAll(selector);
   console.log(`在${siteName}找到图片数量:`, images.length);
+  console.log(`使用的选择器: ${selector}`);
+
+  // 额外调试：显示所有找到的图片信息
+  images.forEach((img, i) => {
+    console.log(`图片${i}: 类名=${img.className}, data-apm-action=${img.getAttribute('data-apm-action')}, 尺寸=${img.getBoundingClientRect().width}x${img.getBoundingClientRect().height}`);
+  });
   
   images.forEach((img, index) => {
     // The check for processedImages is removed here.
