@@ -1,5 +1,5 @@
-// 豆包即梦图片去水印下载器 v1.2.2
-// 修复即梦网站适配问题，增强选择器兼容性
+// 豆包即梦图片去水印下载器 v1.2.3
+// 修复Dreamina网站适配问题，增强选择器兼容性和大图检测逻辑
 console.log('通用去水印插件已加载！当前网站:', window.location.hostname);
 
 // 防止重复处理的全局集合 - This is being removed as it causes issues with dynamic content.
@@ -29,8 +29,9 @@ function getImageSelector(siteType) {
       // Support both old and new class names and data attributes
       return 'img[class*="image-"], img[data-apm-action*="image"], img[data-apm-action*="detail"]';
     case 'dreamina':
-      // Dreamina (international version) uses similar selectors as jimeng
-      return 'img.image-GsX5hD, img[data-apm-action="record-detail-image-detail-image-container"]';
+      // Dreamina (international version) - updated with fuzzy matching for better compatibility
+      // Support both old and new class names and data attributes
+      return 'img[class*="image-"], img[data-apm-action*="image"], img[data-apm-action*="detail"], img[data-apm-action*="card"]';
     default:
       return 'img';
   }
@@ -89,14 +90,36 @@ function isLargeImageMode(img, siteType) {
   }
 
   if (siteType === 'dreamina') {
-    // Dreamina uses similar modal detection logic as jimeng
+    // Enhanced logic for Dreamina with better debugging and fallback detection
+    console.log(`🔍 [Dreamina] 检测大图模式 - 图片尺寸: ${rect.width}x${rect.height}`);
+    console.log(`🔍 [Dreamina] 图片类名: ${img.className}`);
+    console.log(`🔍 [Dreamina] 图片data-apm-action: ${img.getAttribute('data-apm-action')}`);
+
     const modalContainer = img.closest('[style*="position: fixed"], [class*="modal"], [class*="dialog"], [class*="overlay"]');
-    if (!modalContainer) return false;
-    
-    if (rect.width > 400 && rect.height > 400) {
-      console.log('✅ [Dreamina] 判断为大图模式');
+    console.log(`🔍 [Dreamina] 找到模态容器: ${modalContainer ? '是' : '否'}`);
+
+    // Primary detection: modal container + size
+    if (modalContainer && rect.width > 400 && rect.height > 400) {
+      console.log('✅ [Dreamina] 判断为大图模式 (模态+尺寸)');
       return true;
     }
+
+    // Fallback detection: check for detail/card indicators in data attributes
+    const dataAction = img.getAttribute('data-apm-action') || '';
+    const hasDetailIndicator = dataAction.includes('detail') || dataAction.includes('card');
+
+    if (hasDetailIndicator && rect.width > 300 && rect.height > 300) {
+      console.log('✅ [Dreamina] 判断为大图模式 (详情页面+尺寸)');
+      return true;
+    }
+
+    // Additional fallback: large size alone
+    if (rect.width > 500 && rect.height > 500) {
+      console.log('✅ [Dreamina] 基于尺寸判断为大图模式');
+      return true;
+    }
+
+    console.log('❌ [Dreamina] 不是大图模式');
     return false;
   }
 
